@@ -3,11 +3,12 @@
 #include <freertos/task.h>
 #include <Arduino.h>
 #include <WiFi.h>
+#include "mpuManager.h"
 
 WiFiUDP udp;
 const unsigned int localPort = 8888;
 
-// Функция задачи для обработки UDP-пакетов
+
 void udpServerTask(void *pvParameters)
 {
     char packetBuffer[255];
@@ -27,22 +28,18 @@ void udpServerTask(void *pvParameters)
             Serial.print("Packet size: ");
             Serial.println(packetSize);
 
-            // Читаем пакет в буфер
-            int len = udp.read(packetBuffer, sizeof(packetBuffer) - 1); // -1 для нуль-терминатора
-            if (len > 0)
+            int len = udp.read(packetBuffer, sizeof(packetBuffer) - 1);
+            if (len > 0 && MpuStatusConnection())
             {
-                packetBuffer[len] = '\0'; // Нуль-терминируем строку
+                packetBuffer[len] = '\0';
 
-                Serial.print("Message: ");
                 Serial.println(packetBuffer);
 
-                // Отправляем ответ
                 udp.beginPacket(udp.remoteIP(), udp.remotePort());
 
-                const char *ackMessage = "ACK";
+                const char *ackMessage = GetSensorDataJson().c_str();
                 udp.write((const uint8_t *)ackMessage, strlen(ackMessage));
                 udp.endPacket();
-                Serial.println("ACK sent");
             }
         }
 
@@ -52,10 +49,10 @@ void udpServerTask(void *pvParameters)
     vTaskDelete(NULL);
 }
 
-// Функция запуска UDP-сервера
 void startUdpServer()
 {
-    // Инициализируем UDP
+    InitMPU6050();
+
     if (udp.begin(localPort))
     {
         Serial.print("UDP Server started on port ");
@@ -70,15 +67,13 @@ void startUdpServer()
         return;
     }
 
-    // Создаем задачу для обработки UDP
     BaseType_t taskCreated = xTaskCreate(
-        udpServerTask, // Функция задачи
-        "udp_server",  // Имя задачи (до 16 символов)
-        4096,          // Размер стека (увеличил для надежности)
-        NULL,          // Параметры
-        1,             // Приоритет
-        NULL           // Хэндл задачи
-    );
+        udpServerTask,
+        "udp_server",
+        4096,
+        NULL,
+        1,
+        NULL);
 
     if (taskCreated != pdPASS)
     {

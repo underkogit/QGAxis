@@ -5,9 +5,6 @@
 #endif
 
 #include "includes.h"
-#include <httpServer.h>
-#include <mpuManager.h>
-#include <udpManager.h>
 
 void Init()
 {
@@ -21,8 +18,6 @@ void setup()
 
   InitHttpServer();
   startUdpServer();
-
-  InitMPU6050();
 }
 
 void loop()
